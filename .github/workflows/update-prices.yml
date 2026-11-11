@@ -1,9 +1,8 @@
 name: update-prices
 on:
   workflow_dispatch:
-  # 시험이 끝나면 아래 두 줄의 # 를 지우면 자동으로 돕니다 (UTC 기준, 한국시간 -9시간).
-  # schedule:
-  #   - cron: '7 0,5,10 * * *'
+  schedule:
+    - cron: '7 * * * *'   # 매시간 7분 (UTC)
 permissions:
   contents: write
 concurrency:
