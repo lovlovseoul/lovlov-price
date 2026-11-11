@@ -93,7 +93,7 @@ def scrape_all():
         page = ctx.new_page()
         jobs = {
             '29CM': lambda: pages_29cm(page),
-            '무신사': lambda: collect(page, 'https://www.musinsa.com/brand/lovlov?gf=A'),
+            '무신사': lambda: pages_musinsa(page),
             'W컨셉': lambda: collect(page, 'https://display.wconcept.co.kr/search?keyword=%EB%A1%9C%EB%B8%8C%EB%A1%9C%EB%B8%8C&type=direct', need_brand=True, scroll_s=60),
             '퀸잇': lambda: collect(page, 'https://web.queenit.kr/brand/LOVLOV_SEOUL'),
             '지그재그': lambda: collect(page, 'https://zigzag.kr/lovlovseoul/search?keyword=%EB%A1%9C%EB%B8%8C%EB%A1%9C%EB%B8%8C', need_brand=True, scroll_s=60),
@@ -109,6 +109,45 @@ def scrape_all():
             print(name, len(res[name]))
         br.close()
     return res
+
+
+def pages_musinsa(page):
+    """목록 가격은 첫구매/쿠폰이 반영된 가격이라, 상품 상세 페이지의 비로그인 판매가를 읽는다."""
+    page.goto('https://www.musinsa.com/brand/lovlov?gf=A', wait_until='domcontentloaded', timeout=60000)
+    page.wait_for_timeout(3500)
+    ids = []
+    t0 = time.time(); stable = 0
+    while time.time() - t0 < 60:
+        found = page.eval_on_selector_all('a[href*="/products/"]', 'els => els.map(e => e.href)')
+        for h in found:
+            m = re.search(r'/products/(\d+)', h)
+            if m and m.group(1) not in ids:
+                ids.append(m.group(1)); stable = 0
+        stable += 1
+        if stable > 10:
+            break
+        page.mouse.wheel(0, 1600)
+        page.wait_for_timeout(600)
+    acc = {}
+    for pid in ids[:150]:
+        try:
+            page.goto(f'https://www.musinsa.com/products/{pid}', wait_until='domcontentloaded', timeout=45000)
+            page.wait_for_timeout(1500)
+            title = page.title()
+            if '로브로브' not in title:
+                continue
+            name = re.sub(r'^로브로브\(LOVLOV\)\s*', '', title)
+            name = re.split(r'\s+-\s+사이즈', name)[0].strip()
+            body = page.inner_text('body')
+            m = re.search(r'(\d{1,2})%\s*\n\s*([\d,]{4,})원', body)
+            if not m or not name or SKIP_NAME.match(name):
+                continue
+            price = int(m.group(2).replace(',', ''))
+            if name not in acc or price < acc[name]:
+                acc[name] = price
+        except Exception as e:
+            print('musinsa item fail', pid, repr(e)[:80])
+    return acc
 
 
 def pages_29cm(page):
