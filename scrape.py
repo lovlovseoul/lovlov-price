@@ -146,6 +146,7 @@ def pages_musinsa(page):
                 continue
             price = int(m.group(2).replace(',', ''))
             DISC[(name, price)] = int(m.group(1))
+            print('MUSINSA', pid, name, price, m.group(1), flush=True)
             if name not in acc or price < acc[name]:
                 acc[name] = price
         except Exception as e:
