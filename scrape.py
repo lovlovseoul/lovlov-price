@@ -1,5 +1,5 @@
 """로브로브 플랫폼별 판매가를 읽어 lovlov_prices.csv 를 갱신한다 (GitHub Actions 에서 실행)."""
-import csv, re, sys, time, datetime, collections
+import csv, re, sys, time, datetime, collections, urllib.parse
 from playwright.sync_api import sync_playwright
 
 PLAT = {
@@ -109,8 +109,53 @@ def scrape_all():
                 print('FAIL', name, repr(e)[:200])
                 res[name] = {}
             print(name, len(res[name]))
+        try:
+            wconcept_fill(page, res)
+        except Exception as e:
+            print('FAIL wconcept_fill', repr(e)[:200])
         br.close()
     return res
+
+
+def wconcept_fill(page, res):
+    """W컨셉 목록 검색에 안 잡힌 상품을, 다른 플랫폼에서 읽은 이름으로 하나씩 검색해 채운다."""
+    wc = res.get('W컨셉', {})
+    if len(wc) < 15:
+        return
+    have = {key(clean(n)) for n in wc}
+    want = {}
+    for pn, items in res.items():
+        if pn == 'W컨셉':
+            continue
+        for raw in items:
+            if BAD.search(raw):
+                continue
+            d = clean(raw)
+            if not d or not re.search(r'[가-힣]', d):
+                continue
+            k = key(d)
+            if k not in have and k not in want:
+                want[k] = d
+    added = 0
+    for k, d in want.items():
+        try:
+            url = 'https://display.wconcept.co.kr/search?keyword=' + urllib.parse.quote('로브로브 ' + d) + '&type=direct'
+            page.goto(url, wait_until='domcontentloaded', timeout=45000)
+            best = None
+            for _ in range(8):
+                page.wait_for_timeout(1000)
+                txt = page.inner_text('body')
+                for n, p in parse(txt, need_brand=True):
+                    if key(clean(n)) == k and (best is None or p < best[1]):
+                        best = (n, p)
+                if best or ('상품정보' in txt and _ >= 3):
+                    break
+            if best:
+                wc[best[0]] = best[1]
+                added += 1
+        except Exception as e:
+            print('wconcept fill fail', k, repr(e)[:80])
+    print('W컨셉 fill', added, '/', len(want))
 
 
 def pages_musinsa(page):
