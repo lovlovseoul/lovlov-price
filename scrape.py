@@ -27,10 +27,12 @@ SKIP_NAME = re.compile(r'^(LOVLOV|로브로브|오늘출발|더블유위크|쿠�
 
 
 def clean(n):
+    ss = bool(re.search(r'S\s*/\s*S\s*ver|\bSS\s*ver|\(\s*SS\s*\)', n, re.I))
     n = re.sub(r'\[[^\]]*\]', ' ', n)
     n = re.sub(r'\([^)]*\)', ' ', n)
     n = re.sub(r'_.*$', '', n)
-    return re.sub(r'\s+', ' ', n).strip()
+    n = re.sub(r'\s+', ' ', n).strip()
+    return n + ' SS' if ss else n
 
 
 def key(n):
