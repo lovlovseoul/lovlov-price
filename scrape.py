@@ -95,7 +95,7 @@ def scrape_all():
         page = ctx.new_page()
         jobs = {
             '29CM': lambda: pages_29cm(page),
-            '무신사': lambda: pages_musinsa(page),
+            '무신사': lambda: {},  # GitHub 서버에서는 쿠폰 반영가가 보여 정확하지 않아 읽지 않는다
             'W컨셉': lambda: collect(page, 'https://display.wconcept.co.kr/search?keyword=%EB%A1%9C%EB%B8%8C%EB%A1%9C%EB%B8%8C&type=direct', need_brand=True, scroll_s=60),
             '퀸잇': lambda: collect(page, 'https://web.queenit.kr/brand/LOVLOV_SEOUL'),
             '지그재그': lambda: collect(page, 'https://zigzag.kr/lovlovseoul/search?keyword=%EB%A1%9C%EB%B8%8C%EB%A1%9C%EB%B8%8C', need_brand=True, scroll_s=60),
@@ -203,6 +203,8 @@ def main():
         prev = len(old.get(pn, []))
         if len(items) < 15:
             print('KEEP OLD', pn, len(items), 'prev', prev)
+            if pn == '무신사':
+                continue  # 부정확한 이전 값은 버린다
             for r in old.get(pn, []):
                 data[r['product_key']][pn] = int(r['price'])
                 disc[r['product_key']][pn] = r.get('discount') or ''
