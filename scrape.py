@@ -12,6 +12,7 @@ PLAT = {
     '롯데온': 'https://www.lotteon.com/p/display/seller/sellerShop/LO10167238',
 }
 ALIAS = {
+ '이지스웻ss':'이지스웻','이지조거ss':'이지조거',
  'mysignatureknit':'마이시그니처니트','snowbloomzip-up':'스노우블룸집업','newlovwidedenim':'뉴로브와이드데님',
  'neworiginalstraightdenim':'뉴오리지널스트레이트데님','double-sidedlongmustang':'더블사이디드롱무스탕',
  '더블사이드롱무스탕':'더블사이디드롱무스탕','firstmomentminidress':'퍼스트모먼트미니드레스',
@@ -122,7 +123,7 @@ def wconcept_fill(page, res):
     wc = res.get('W컨셉', {})
     if len(wc) < 15:
         return
-    have = {key(clean(n)) for n in wc}
+    have = {key(clean(n)) for n in wc if not BAD.search(n)}
     want = {}
     for pn, items in res.items():
         if pn == 'W컨셉':
@@ -142,13 +143,13 @@ def wconcept_fill(page, res):
             url = 'https://display.wconcept.co.kr/search?keyword=' + urllib.parse.quote('로브로브 ' + d) + '&type=direct'
             page.goto(url, wait_until='domcontentloaded', timeout=45000)
             best = None
-            for _ in range(8):
+            for _ in range(10):
                 page.wait_for_timeout(1000)
                 txt = page.inner_text('body')
                 for n, p in parse(txt, need_brand=True):
-                    if key(clean(n)) == k and (best is None or p < best[1]):
+                    if not BAD.search(n) and key(clean(n)) == k and (best is None or p < best[1]):
                         best = (n, p)
-                if best or ('상품정보' in txt and _ >= 3):
+                if best or ('상품정보' in txt and _ >= 6):
                     break
             if best:
                 wc[best[0]] = best[1]
