@@ -149,7 +149,7 @@ def main():
     for pn, items in res.items():
         # 읽은 개수가 너무 적으면(차단·구조 변경) 그 플랫폼은 이전 값을 유지한다
         prev = len(old.get(pn, []))
-        if len(items) < max(8, int(prev * 0.5)):
+        if len(items) < 15:
             print('KEEP OLD', pn, len(items), 'prev', prev)
             for r in old.get(pn, []):
                 data[r['product_key']][pn] = int(r['price'])
