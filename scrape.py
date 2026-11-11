@@ -1,5 +1,5 @@
 """로브로브 플랫폼별 판매가를 읽어 lovlov_prices.csv 를 갱신한다 (GitHub Actions 에서 실행)."""
-import csv, re, sys, time, datetime, collections, urllib.parse
+import csv, re, sys, time, datetime, collections, urllib.parse, difflib
 from playwright.sync_api import sync_playwright
 
 PLAT = {
@@ -268,6 +268,23 @@ def main():
                 disc[k][pn] = DISC.get((raw, price), '')
             if re.search(r'[가-힣]', d):
                 names[k][d] += 1
+    # 유사 상품명 합치기: 같은 플랫폼에 겹치지 않고 이름이 매우 비슷하면 같은 상품으로 본다
+    order = sorted(data, key=lambda x: -len(data[x]))
+    kept = []
+    for b in order:
+        best, br = None, 0.0
+        for a_ in kept:
+            if set(data[a_]) & set(data[b]) or a_.endswith('ss') != b.endswith('ss'):
+                continue
+            r = difflib.SequenceMatcher(None, a_, b).ratio()
+            if r >= 0.86 and r > br:
+                best, br = a_, r
+        if best:
+            print('FUZZY MERGE', b, '->', best, round(br, 2))
+            data[best].update(data[b]); disc[best].update(disc.get(b, {}))
+            names[best].update(names[b]); del data[b]
+        else:
+            kept.append(b)
     rows = []
     for k, pp in data.items():
         if len(pp) < 2:
