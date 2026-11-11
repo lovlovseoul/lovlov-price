@@ -23,6 +23,7 @@ ALIAS = {
 BAD = re.compile(r'2PACK|1\+1|세트|SET|묶음|골라보는|창고', re.I)
 PCT = re.compile(r'^\d{1,2}%$')
 NUM = re.compile(r'^[\d,]+원?~?$')
+DISC = {}  # (읽은 상품명, 판매가) -> 할인율(%)
 SKIP_NAME = re.compile(r'^(LOVLOV|로브로브|오늘출발|더블유위크|쿠폰|단독|무료배송|BEST|NEW|SOLD OUT|품절)$', re.I)
 
 
@@ -58,6 +59,7 @@ def parse(text, need_brand=False):
             continue
         if need_brand and not (j > 0 and L[j - 1] == '로브로브'):
             continue
+        DISC[(name, price)] = int(s[:-1])
         out.append((name, price))
     return out
 
@@ -143,6 +145,7 @@ def pages_musinsa(page):
             if not m or not name or SKIP_NAME.match(name):
                 continue
             price = int(m.group(2).replace(',', ''))
+            DISC[(name, price)] = int(m.group(1))
             if name not in acc or price < acc[name]:
                 acc[name] = price
         except Exception as e:
@@ -185,6 +188,7 @@ def main():
         pass
     res = scrape_all()
     data = collections.defaultdict(dict)   # key -> platform -> price
+    disc = collections.defaultdict(dict)   # key -> platform -> 할인율
     names = collections.defaultdict(collections.Counter)
     ok = []
     for pn, items in res.items():
@@ -194,6 +198,7 @@ def main():
             print('KEEP OLD', pn, len(items), 'prev', prev)
             for r in old.get(pn, []):
                 data[r['product_key']][pn] = int(r['price'])
+                disc[r['product_key']][pn] = r.get('discount') or ''
                 names[r['product_key']][r['name']] += 1
             continue
         ok.append(pn)
@@ -206,6 +211,7 @@ def main():
             k = key(d)
             if pn not in data[k] or price < data[k][pn]:
                 data[k][pn] = price
+                disc[k][pn] = DISC.get((raw, price), '')
             if re.search(r'[가-힣]', d):
                 names[k][d] += 1
     rows = []
@@ -214,13 +220,13 @@ def main():
             continue
         nm = names[k].most_common(1)[0][0] if names[k] else k
         for pn, price in pp.items():
-            rows.append(dict(product_key=k, name=nm, platform=pn, price=price, shop_url=PLAT[pn], fetched_at=now))
+            rows.append(dict(product_key=k, name=nm, platform=pn, price=price, discount=disc[k].get(pn, ''), shop_url=PLAT[pn], fetched_at=now))
     plats = {r['platform'] for r in rows}
     print('products', len({r['product_key'] for r in rows}), 'rows', len(rows), 'platforms', len(plats), 'fresh', ok)
     if len(rows) < 200 or len(plats) < 5 or len(ok) < 3:
         print('too little data, not writing'); sys.exit(1)
     with open('lovlov_prices.csv', 'w', newline='', encoding='utf-8') as f:
-        w = csv.DictWriter(f, fieldnames=['product_key', 'name', 'platform', 'price', 'shop_url', 'fetched_at'])
+        w = csv.DictWriter(f, fieldnames=['product_key', 'name', 'platform', 'price', 'discount', 'shop_url', 'fetched_at'])
         w.writeheader(); w.writerows(rows)
 
 

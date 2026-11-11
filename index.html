@@ -25,7 +25,7 @@ details{border-top:1px solid var(--line);padding-top:12px;font-size:14px}summary
 @media(max-width:640px){.item{grid-template-columns:56px minmax(0,1fr)}.thumb{width:56px;height:56px}.offers{grid-column:1/-1}}
 .tabs{display:flex;gap:6px;border-bottom:1px solid var(--line)}.tab{padding:8px 14px;border:0;border-bottom:2px solid transparent;background:none;color:var(--mut);font:inherit;font-weight:500;cursor:pointer}.tab.on{color:var(--fg);border-color:var(--fg)}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}.chip{padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--bg);color:var(--fg);font:inherit;font-size:13px;cursor:pointer}.chip.on{background:var(--fg);color:var(--bg)}
-.save{color:var(--ok);font-size:13px}.hide{display:none!important}
+.dc{font-style:normal;color:#d63b3b;font-size:12px;margin-left:4px}.save{color:var(--ok);font-size:13px}.hide{display:none!important}
 </style></head><body><main>
 <h1>로브로브 플랫폼 최저가 비교</h1>
 <p class="banner"><b>실제 가격입니다.</b> 29CM, 무신사, W컨셉, 퀸잇, 지그재그, SSF, 롯데온의 로브로브 브랜드 공개 페이지에 보이는 판매가를 <span id="when">—</span>쯤 읽어 왔습니다(1시간마다 갱신). 쿠폰과 카드 할인은 빠져 있습니다. 네이버는 아직 연결하지 못했고, 일부 상품만 읽혀서 전체 상품은 아닙니다.</p>
@@ -52,7 +52,7 @@ let P=[],T={},T2={};
 async function init(){
  try{const t=await (await fetch('lovlov_prices.csv?t='+Date.now(),{cache:'no-store'})).text();
   const [hd,...rs]=parseCSV(t.trim());const ix=Object.fromEntries(hd.map((x,i)=>[x,i]));
-  DATA=rs.filter(r=>r.length>1).map(r=>({k:r[ix.product_key],n:r[ix.name],p:r[ix.platform],v:+r[ix.price],u:r[ix.shop_url]}));
+  DATA=rs.filter(r=>r.length>1).map(r=>({k:r[ix.product_key],n:r[ix.name],p:r[ix.platform],v:+r[ix.price],d:ix.discount!=null&&r[ix.discount]?+r[ix.discount]:0,u:r[ix.shop_url]}));
   FETCHED=rs[0][ix.fetched_at]}catch(e){$('list').textContent='가격 파일을 불러오지 못했습니다.';return}
  try{const tt=await (await fetch('thumbs.csv?t='+Date.now(),{cache:'no-store'})).text();parseCSV(tt.trim()).slice(1).forEach(r=>{if(r[0]&&r[1])T[r[0]]=r[1]})}catch(e){}
  try{const t2=await (await fetch('thumbs29.csv?t='+Date.now(),{cache:'no-store'})).text();parseCSV(t2.trim()).slice(1).forEach(r=>{if(r[0]&&r[1])T2[r[0]]=r[1]})}catch(e){}
@@ -76,7 +76,7 @@ function render(){
   mn.append(min,mk('div','meta','가장 싼 곳 '+r.cheap.join(' · ')));
   const w=mk('div','offers'),ul=mk('ul');const by=new Map(r.o.map(o=>[o.p,o]));
   ORDER.forEach(n=>{const o=by.get(n),li=mk('li',!o?'none':o.v===r.min?'min':'');
-   if(o){const a=mk('a',null,n);a.href=o.u;a.target='_blank';a.rel='noopener noreferrer';li.append(a,mk('span','p',fmt(o.v)+'원'))}
+   if(o){const a=mk('a',null,n);a.href=o.u;a.target='_blank';a.rel='noopener noreferrer';const sp=mk('span','p',fmt(o.v)+'원');if(o.d){sp.append(mk('em','dc',' '+o.d+'%'))}li.append(a,sp)}
    else li.append(mk('span',null,n),mk('span','p','—'));ul.append(li)});
   w.append(ul);it.append(th,mn,w);return it}))}
 
@@ -88,7 +88,7 @@ function render2(){
  L.replaceChildren(...rows.map(r=>{
   const it=mk('div','item'),th=mk('div','thumb',(T[r.k]||T2[r.k])?'':r.n.replace(/\s+/g,'').slice(0,4)),mn=mk('div');
   if(T[r.k]||T2[r.k]){const im=document.createElement('img');im.loading='lazy';im.referrerPolicy='no-referrer';im.alt=r.n;im.src=T[r.k]?'https://product-image.wconcept.co.kr/productimg/image/'+T[r.k]+'?RS=300':'https://img.29cm.co.kr/item/'+T2[r.k];im.onerror=()=>{im.remove();th.textContent=r.n.replace(/\s+/g,'').slice(0,4)};th.append(im)}
-  mn.append(mk('h3','name',r.n));const m=mk('div','min');m.append(PF+' ',mk('b',null,fmt(r.min)),'원');if(r.tie)m.append(mk('span','pill','공동 최저가 '+r.cheap.join('·')));
+  mn.append(mk('h3','name',r.n));const m=mk('div','min');m.append(PF+' ',mk('b',null,fmt(r.min)),'원');{const oo=r.o.find(x=>x.p===PF);if(oo&&oo.d)m.append(mk('em','dc',' '+oo.d+'%'))}if(r.tie)m.append(mk('span','pill','공동 최저가 '+r.cheap.join('·')));
   mn.append(m,mk('div','save',r.diff>0?'두 번째로 싼 곳보다 '+fmt(r.diff)+'원 저렴':'같은 가격'));
   const o=r.o.find(x=>x.p===PF),a=mk('a',null,PF+' 에서 보기');a.href=o.u;a.target='_blank';a.rel='noopener noreferrer';const w=mk('div','offers');w.append(a);
   it.append(th,mn,w);return it}))}
