@@ -131,6 +131,7 @@ def pages_musinsa(page):
         page.mouse.wheel(0, 1600)
         page.wait_for_timeout(600)
     acc = {}
+    master, var = {}, {}  # 묶음(Ncolor) 상품 가격을 우선, 색상별 상품은 보조
     for pid in ids[:150]:
         try:
             page.goto(f'https://www.musinsa.com/products/{pid}', wait_until='domcontentloaded', timeout=45000)
@@ -147,10 +148,15 @@ def pages_musinsa(page):
             price = int(m.group(2).replace(',', ''))
             DISC[(name, price)] = int(m.group(1))
             print('MUSINSA', pid, name, price, m.group(1), flush=True)
-            if name not in acc or price < acc[name]:
-                acc[name] = price
+            base = clean(name)
+            tgt = master if re.search(r'\(\s*\d+\s*color', name, re.I) else var
+            if base not in tgt or price < tgt[base][1]:
+                tgt[base] = (name, price)
         except Exception as e:
             print('musinsa item fail', pid, repr(e)[:80])
+    for base in set(master) | set(var):
+        nm, pr = master.get(base) or var[base]
+        acc[nm] = pr
     return acc
 
 
