@@ -98,10 +98,10 @@ def scrape_all():
             '29CM': lambda: pages_29cm(page),
             '무신사': lambda: {},  # GitHub 서버에서는 쿠폰 반영가가 보여 정확하지 않아 읽지 않는다
             'W컨셉': lambda: collect(page, 'https://display.wconcept.co.kr/search?keyword=%EB%A1%9C%EB%B8%8C%EB%A1%9C%EB%B8%8C&type=direct', need_brand=True, scroll_s=60),
-            '퀸잇': lambda: collect(page, 'https://web.queenit.kr/brand/LOVLOV_SEOUL'),
+            '퀸잇': lambda: {},  # 사용자 PC의 Chrome으로 하루 3번 읽어 manual_prices.csv 로 올린다
             '지그재그': lambda: collect(page, 'https://zigzag.kr/lovlovseoul/search?keyword=%EB%A1%9C%EB%B8%8C%EB%A1%9C%EB%B8%8C', need_brand=True, scroll_s=60),
-            'SSF': lambda: pages_ssf(page),
-            '롯데온': lambda: collect(page, 'https://www.lotteon.com/p/display/seller/sellerShop/LO10167238'),
+            'SSF': lambda: {},
+            '롯데온': lambda: {},
         }
         for name, fn in jobs.items():
             try:
@@ -110,12 +110,42 @@ def scrape_all():
                 print('FAIL', name, repr(e)[:200])
                 res[name] = {}
             print(name, len(res[name]))
+        load_manual(res)
         try:
             wconcept_fill(page, res)
         except Exception as e:
             print('FAIL wconcept_fill', repr(e)[:200])
         br.close()
     return res
+
+
+MANUAL = ('무신사', '퀸잇', 'SSF', '롯데온')
+
+
+def load_manual(res):
+    """GitHub 서버에서 못 읽는 플랫폼은 manual_prices.csv(platform,name,price,discount)에서 가져온다."""
+    try:
+        rows = list(csv.DictReader(open('manual_prices.csv', encoding='utf-8')))
+    except FileNotFoundError:
+        print('manual_prices.csv 없음')
+        return
+    n = 0
+    for r in rows:
+        pn = r.get('platform')
+        if pn not in MANUAL:
+            continue
+        try:
+            price = int(r['price'])
+        except (ValueError, KeyError):
+            continue
+        name = r['name'].strip()
+        d = res.setdefault(pn, {})
+        if name not in d or price < d[name]:
+            d[name] = price
+            if (r.get('discount') or '').isdigit():
+                DISC[(name, price)] = int(r['discount'])
+        n += 1
+    print('manual rows', n, {p: len(res.get(p, {})) for p in MANUAL})
 
 
 def wconcept_fill(page, res):
